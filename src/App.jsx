@@ -1,26 +1,15 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, LayoutDashboard, Users, Wallet, Settings, PlusCircle, Bell, Search,
   Menu, X, TrendingUp, CheckCircle, Clock, ArrowLeft, Save, Plus, Trash2,
-  Calculator, User, MapPin, Phone, ChevronLeft, ChevronRight, FileText, 
-  BarChart3, Shield, Star, MoreVertical, ChevronDown, ChevronUp, Receipt,
+  Calculator, User, Phone, ChevronLeft, ChevronRight, 
+  Shield, Star, ChevronDown, ChevronUp,
   LogOut, Lock, UserCircle, Key
 } from 'lucide-react';
 
-const initialBookings = [
-  { id: 1, date: '2026-07-08', clientName: 'Azizbek Rahmonov', clientPhone: '+998901234567', eventCategory: 'Nikoh to\'yi', eventType: 'Kechki', status: 'Tasdiqlangan', orderPrice: 45000000, additionalServices: 2000000, advancePayment: 10000000, expElectricity: 1000000, expChef: 3000000, expWorkers: 4000000, expSamovar: 500000, otherExpensesTotal: 16500000, otherExpenses: [{id: 101, name: 'Bezak (Dekoratsiya)', amount: 10000000}, {id: 102, name: 'San\'atkorlar', amount: 6500000}], totalExpenses: 25000000 },
-  { id: 2, date: '2026-07-10', clientName: 'Dilshod Tursunov', clientPhone: '+998939876543', eventCategory: 'Sunnat to\'yi', eventType: 'Kunduzgi', status: 'Kutilmoqda', orderPrice: 20000000, additionalServices: 0, advancePayment: 0, expElectricity: 500000, expChef: 1500000, expWorkers: 2000000, expSamovar: 300000, otherExpensesTotal: 7700000, otherExpenses: [{id: 103, name: 'Boshlovchi', amount: 3000000}, {id: 104, name: 'Muzey va Sayr', amount: 4700000}], totalExpenses: 12000000 },
-  { id: 3, date: '2026-07-15', clientName: 'Malika Karimova', clientPhone: '+998971112233', eventCategory: 'Qiz bazmi', eventType: 'Kechki', status: 'Tasdiqlangan', orderPrice: 15000000, additionalServices: 1000000, advancePayment: 15000000, expElectricity: 800000, expChef: 1000000, expWorkers: 1500000, expSamovar: 200000, otherExpensesTotal: 1500000, otherExpenses: [{id: 105, name: 'DJ xizmati', amount: 1500000}], totalExpenses: 5000000 },
-];
-
-const initialCompanyExpenses = [
-  { id: 1, date: '2026-07-02', title: "Bino fasadi ta'miri (bo'yoq)", amount: 2500000 },
-  { id: 2, date: '2026-07-05', title: "Instagram marketing va reklama", amount: 800000 }
-];
-
-const initialNotifications = [
-  { id: 1, type: 'alert', title: "Ertaga tadbir!", message: "8-Iyul kuni Azizbek Rahmonovning nikoh to'yi.", time: "10 daqiqa oldin", read: false }
-];
+const initialBookings = [];
+const initialCompanyExpenses = [];
+const initialNotifications = [];
 
 const defaultCredentials = { manager: 'admin123', boshliq: 'boss123' };
 const defaultCompanyInfo = { name: "Grand Hall", phone: "+998 90 123 45 67" };
@@ -76,7 +65,7 @@ export default function ToyxonaCRM() {
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
 
-  const [currentMonthDate, setCurrentMonthDate] = useState(new Date(2026, 6, 1)); 
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date()); 
 
   const [newCompExp, setNewCompExp] = useState({ title: '', amount: '' });
   const [expandedFinanceId, setExpandedFinanceId] = useState(null);
@@ -279,10 +268,6 @@ export default function ToyxonaCRM() {
               </div>
               <div className="bg-green-50 p-3 rounded-xl text-green-600"><TrendingUp size={24} /></div>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-sm">
-              <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md">+12.5%</span>
-              <span className="text-slate-400">o'tgan oyga nisbatan</span>
-            </div>
           </div>
           
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -292,9 +277,6 @@ export default function ToyxonaCRM() {
                 <h3 className="text-2xl font-bold text-slate-800">{activeOrders} ta</h3>
               </div>
               <div className="bg-blue-50 p-3 rounded-xl text-blue-600"><Calendar size={24} /></div>
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
-              Ushbu oy uchun tasdiqlangan
             </div>
           </div>
 
@@ -307,7 +289,7 @@ export default function ToyxonaCRM() {
               <div className="bg-white/20 p-3 rounded-xl text-white backdrop-blur-sm"><Clock size={24} /></div>
             </div>
             <div className="mt-4 pt-4 border-t border-indigo-500/30">
-              <p className="text-sm text-indigo-100">Keyingi tadbir: <span className="font-bold text-white">{bookings[0]?.date || 'Noma\'lum'}</span></p>
+              <p className="text-sm text-indigo-100">Keyingi tadbir: <span className="font-bold text-white">{bookings[0]?.date || 'Hozircha yo\'q'}</span></p>
             </div>
           </div>
         </div>
@@ -318,6 +300,9 @@ export default function ToyxonaCRM() {
             <button onClick={() => setActiveTab('calendar')} className="text-indigo-600 text-sm font-medium hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-lg transition-colors">Barchasini ko'rish</button>
           </div>
           <div className="overflow-x-auto">
+            {bookings.length === 0 ? (
+                <div className="p-8 text-center text-slate-500">Hozircha kiritilgan tadbirlar yo'q</div>
+            ) : (
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white text-slate-400 text-xs uppercase tracking-wider border-b border-slate-100">
@@ -369,6 +354,7 @@ export default function ToyxonaCRM() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
       </div>
@@ -540,7 +526,10 @@ export default function ToyxonaCRM() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {bookings.map((client, idx) => (
+        {bookings.length === 0 ? (
+           <div className="col-span-full p-8 text-center text-slate-500 bg-white rounded-xl">Hozircha mijozlar mavjud emas</div>
+        ) : (
+        bookings.map((client, idx) => (
           <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
              <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
@@ -562,7 +551,8 @@ export default function ToyxonaCRM() {
                 </div>
              </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );
@@ -612,7 +602,10 @@ export default function ToyxonaCRM() {
           </div>
           
           <div className="divide-y divide-slate-100">
-            {bookings.slice().reverse().map(b => {
+            {bookings.length === 0 ? (
+               <div className="p-8 text-center text-slate-500">Hozircha ma'lumotlar yo'q</div>
+            ) : (
+            bookings.slice().reverse().map(b => {
               const bTotalIncome = b.orderPrice + (b.additionalServices || 0);
               const bNetProfit = bTotalIncome - b.totalExpenses;
               const isExpanded = expandedFinanceId === b.id;
@@ -708,7 +701,8 @@ export default function ToyxonaCRM() {
                   )}
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
 
@@ -721,8 +715,14 @@ export default function ToyxonaCRM() {
                 <div className="lg:col-span-1 bg-slate-50 p-5 rounded-xl border border-slate-200 h-fit">
                    <h4 className="text-sm font-bold text-slate-800 mb-4">Yangi xarajat qo'shish</h4>
                    <div className="space-y-4">
-                      <input type="text" placeholder="Maqsad (Bino ta'miri)" value={newCompExp.title} onChange={(e) => setNewCompExp({...newCompExp, title: e.target.value})} className="w-full p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                      <input type="text" placeholder="Summa (UZS)" value={formatNumber(newCompExp.amount).toLocaleString('en-US')} onChange={(e) => setNewCompExp({...newCompExp, amount: e.target.value})} className="w-full p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Xarajat maqsadi</label>
+                        <input type="text" placeholder="Masalan: Bino ta'miri" value={newCompExp.title} onChange={(e) => setNewCompExp({...newCompExp, title: e.target.value})} className="w-full p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Summa</label>
+                        <input type="text" placeholder="Summa (UZS)" value={formatNumber(newCompExp.amount).toLocaleString('en-US')} onChange={(e) => setNewCompExp({...newCompExp, amount: e.target.value})} className="w-full p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
+                      </div>
                       <button onClick={handleAddCompanyExpense} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2">
                         <Plus size={18}/> Qo'shish
                       </button>
@@ -747,7 +747,10 @@ export default function ToyxonaCRM() {
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-100">
-                      {companyExpenses.map(exp => (
+                      {companyExpenses.length === 0 ? (
+                        <tr><td colSpan="4" className="p-4 text-center text-slate-500">Hozircha xarajatlar yo'q</td></tr>
+                      ) : (
+                      companyExpenses.map(exp => (
                         <tr key={exp.id}>
                            <td className="p-4 text-slate-500">{exp.date}</td>
                            <td className="p-4 font-medium">{exp.title}</td>
@@ -760,7 +763,8 @@ export default function ToyxonaCRM() {
                               )}
                            </td>
                         </tr>
-                      ))}
+                      ))
+                      )}
                    </tbody>
                 </table>
               </div>
@@ -792,8 +796,31 @@ export default function ToyxonaCRM() {
               <h3 className="font-bold text-slate-800">Mijoz va Tadbir</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <input type="text" name="clientName" value={formData.clientName} onChange={handleInputChange} placeholder="Ism (Masalan: Alisher Vahobov)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-              <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required/>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Mijoz Ism-sharifi</label>
+                <input type="text" name="clientName" value={formData.clientName} onChange={handleInputChange} placeholder="Ism (Masalan: Alisher Vahobov)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Telefon raqam</label>
+                <input type="text" name="clientPhone" value={formData.clientPhone} onChange={handleInputChange} placeholder="+998 90 123 45 67" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Tadbir sanasi</label>
+                <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required/>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Tadbir turi</label>
+                <select name="eventCategory" value={formData.eventCategory} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                  {eventCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Vaqti (Navbat)</label>
+                <select name="eventType" value={formData.eventType} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="Kunduzgi">Kunduzgi (Osh)</option>
+                  <option value="Kechki">Kechki</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -802,9 +829,19 @@ export default function ToyxonaCRM() {
               <TrendingUp size={20} className="text-green-600"/>
               <h3 className="font-bold text-green-800">Tushumlar (Kirim)</h3>
             </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
-              <input type="text" name="orderPrice" value={formatNumber(formData.orderPrice).toLocaleString('en-US')} onChange={handleInputChange} placeholder="Kelishilgan Narx (0)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold" />
-              <input type="text" name="advancePayment" value={formatNumber(formData.advancePayment).toLocaleString('en-US')} onChange={handleInputChange} placeholder="Avans (0)" className="w-full p-2.5 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold bg-green-50" />
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Kelishilgan Asosiy Narx (UZS)</label>
+                <input type="text" name="orderPrice" value={formatNumber(formData.orderPrice).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Olingan Avans (UZS)</label>
+                <input type="text" name="advancePayment" value={formatNumber(formData.advancePayment).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold bg-green-50" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">Qo'shimcha Xizmatlar tushumi (UZS)</label>
+                <input type="text" name="additionalServices" value={formatNumber(formData.additionalServices).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right" />
+              </div>
             </div>
           </div>
 
@@ -815,10 +852,22 @@ export default function ToyxonaCRM() {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                <input type="text" name="expElectricity" value={formatNumber(formData.expElectricity).toLocaleString('en-US')} onChange={handleInputChange} placeholder="Elektr (0)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                <input type="text" name="expChef" value={formatNumber(formData.expChef).toLocaleString('en-US')} onChange={handleInputChange} placeholder="Oshpaz (0)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                <input type="text" name="expWorkers" value={formatNumber(formData.expWorkers).toLocaleString('en-US')} onChange={handleInputChange} placeholder="Ishchilar (0)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                <input type="text" name="expSamovar" value={formatNumber(formData.expSamovar).toLocaleString('en-US')} onChange={handleInputChange} placeholder="Samovar (0)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Elektr / Chiroq sarfi (UZS)</label>
+                  <input type="text" name="expElectricity" value={formatNumber(formData.expElectricity).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Oshpaz xizmati (UZS)</label>
+                  <input type="text" name="expChef" value={formatNumber(formData.expChef).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Ishchilar va Ofitsiantlar (UZS)</label>
+                  <input type="text" name="expWorkers" value={formatNumber(formData.expWorkers).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Samovar va Choyxona (UZS)</label>
+                  <input type="text" name="expSamovar" value={formatNumber(formData.expSamovar).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                </div>
               </div>
               <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
                 <div className="flex justify-between items-center mb-4">
@@ -830,11 +879,12 @@ export default function ToyxonaCRM() {
                 <div className="space-y-3">
                   {formData.otherExpenses.map((exp) => (
                     <div key={exp.id} className="flex gap-3 items-center">
-                      <input type="text" placeholder="Nomi (Bezakchi, San'atkor)" value={exp.name} onChange={(e) => updateOtherExpense(exp.id, 'name', e.target.value)} className="flex-1 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                      <input type="text" placeholder="Nomi (Bezak, San'atkor)" value={exp.name} onChange={(e) => updateOtherExpense(exp.id, 'name', e.target.value)} className="flex-1 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                       <input type="text" placeholder="Summa (UZS)" value={formatNumber(exp.amount).toLocaleString('en-US')} onChange={(e) => updateOtherExpense(exp.id, 'amount', e.target.value)} className="w-40 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-right font-medium text-red-600" />
                       <button onClick={() => removeOtherExpense(exp.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
                     </div>
                   ))}
+                  {formData.otherExpenses.length === 0 && <div className="text-xs text-slate-400 text-center py-2">Qo'shimcha xarajatlar yo'q</div>}
                 </div>
               </div>
             </div>
@@ -910,20 +960,6 @@ export default function ToyxonaCRM() {
               Tizimga Kirish
             </button>
           </form>
-
-          <div className="mt-8 pt-6 border-t border-white/10 text-center">
-            <p className="text-xs text-slate-400 mb-3 font-medium uppercase tracking-wider">Test uchun avtomatik to'ldirish</p>
-            <div className="grid grid-cols-2 gap-3 text-left">
-              <div className="bg-slate-800 p-3 rounded-xl cursor-pointer hover:border-indigo-500 border border-slate-700" onClick={() => setLoginForm({username: 'manager', password: credentials.manager})}>
-                <span className="text-indigo-400 text-xs font-bold block mb-1">Menejer</span>
-                <div className="text-[10px] text-slate-400">Login: manager <br/> Parol: {credentials.manager}</div>
-              </div>
-              <div className="bg-slate-800 p-3 rounded-xl cursor-pointer hover:border-emerald-500 border border-slate-700" onClick={() => setLoginForm({username: 'boshliq', password: credentials.boshliq})}>
-                <span className="text-emerald-400 text-xs font-bold block mb-1">Boshliq</span>
-                <div className="text-[10px] text-slate-400">Login: boshliq <br/> Parol: {credentials.boshliq}</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -971,7 +1007,10 @@ export default function ToyxonaCRM() {
                     )}
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
-                    {notifications.map(notif => (
+                    {notifications.length === 0 ? (
+                       <div className="p-4 text-center text-xs text-slate-400">Yangi xabarlar yo'q</div>
+                    ) : (
+                    notifications.map(notif => (
                       <div key={notif.id} className={`px-4 py-3 border-b border-slate-50 cursor-pointer ${!notif.read ? 'bg-indigo-50/50' : ''}`} onClick={() => setNotifications(notifications.map(n => n.id === notif.id ? {...n, read: true} : n))}>
                         <div className="flex justify-between">
                           <span className={`text-sm font-bold ${!notif.read ? 'text-indigo-900' : 'text-slate-700'}`}>{notif.title}</span>
@@ -979,7 +1018,8 @@ export default function ToyxonaCRM() {
                         </div>
                         <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
                       </div>
-                    ))}
+                    ))
+                    )}
                   </div>
                 </div>
               )}
