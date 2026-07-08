@@ -4,7 +4,7 @@ import {
   Menu, X, TrendingUp, CheckCircle, Clock, ArrowLeft, Save, Plus, Trash2,
   Calculator, User, Phone, ChevronLeft, ChevronRight, 
   Shield, Star, ChevronDown, ChevronUp,
-  LogOut, Lock, UserCircle, Key, AlertTriangle
+  LogOut, Lock, UserCircle, Key, AlertTriangle, DollarSign
 } from 'lucide-react';
 
 const initialBookings = [];
@@ -40,6 +40,13 @@ export default function ToyxonaCRM() {
   
   const [passwordsForm, setPasswordsForm] = useState(credentials);
 
+  // YANGI: Valyuta kursi holati
+  const [exchangeRate, setExchangeRate] = useState(() => {
+    const saved = localStorage.getItem('crm_exchange_rate');
+    return saved ? parseFloat(saved) : 12600;
+  });
+  useEffect(() => localStorage.setItem('crm_exchange_rate', exchangeRate.toString()), [exchangeRate]);
+
   const [bookings, setBookings] = useState(() => {
     const saved = localStorage.getItem('crm_bookings');
     return saved ? JSON.parse(saved) : initialBookings;
@@ -70,15 +77,26 @@ export default function ToyxonaCRM() {
   const [newCompExp, setNewCompExp] = useState({ title: '', amount: '' });
   const [expandedFinanceId, setExpandedFinanceId] = useState(null);
 
+  // YANGILANGAN: eventType o'rniga eventTypes (Array)
   const initialFormState = {
-    clientName: '', clientPhone: '', clientAddress: '', eventCategory: 'Nikoh to\'yi', eventDate: '', eventType: 'Kechki',
+    clientName: '', clientPhone: '', clientAddress: '', eventCategory: 'Nikoh to\'yi', eventDate: '', eventTypes: [],
     orderPrice: '', advancePayment: '', additionalServices: '',
     expElectricity: '', expChef: '', expWorkers: '', expSamovar: '', otherExpenses: []
   };
   const [formData, setFormData] = useState(initialFormState);
 
   const formatNumber = (num) => parseInt(num?.toString().replace(/\D/g, '')) || 0;
+  
+  // Formatlash funksiyalari
   const formatUZS = (num) => new Intl.NumberFormat('uz-UZ').format(num) + ' UZS';
+  
+  // YANGI: Dual valyuta formatlash
+  const formatDualCurrency = (num) => {
+    const uzs = parseInt(num?.toString().replace(/\D/g, '')) || 0;
+    const rate = Math.max(1, exchangeRate); // 0 ga bo'linish xatosi oldini olish
+    const usd = uzs / rate;
+    return `${new Intl.NumberFormat('uz-UZ').format(uzs)} UZS ($${usd.toLocaleString('en-US', {maximumFractionDigits: 1})})`;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -150,39 +168,30 @@ export default function ToyxonaCRM() {
     setNewCompExp({ title: '', amount: '' });
   };
 
-  // YANGI FUNKSIYA: Buyurtmani o'chirish
   const handleDeleteBooking = (id, clientName) => {
     if (currentUserRole !== 'manager') return;
-    const isConfirmed = window.confirm(`${clientName} ning buyurtmasini rostdan ham bekor qilmoqchimisiz? Ushbu amal moliyaviy hisobotlardan ham o'chib ketishiga olib keladi.`);
-    
+    const isConfirmed = window.confirm(`${clientName} ning buyurtmasini rostdan ham bekor qilmoqchimisiz?`);
     if (isConfirmed) {
       setBookings(bookings.filter(b => b.id !== id));
-      
-      const newNotif = {
-        id: Date.now(),
-        type: 'alert',
-        title: 'Buyurtma bekor qilindi',
-        message: `${clientName} ning buyurtmasi tizimdan o'chirildi.`,
-        time: 'Hozir',
-        read: false
-      };
-      setNotifications([newNotif, ...notifications]);
-      sendSystemNotification('Buyurtma bekor qilindi', `${clientName} ning buyurtmasi tizimdan va moliyadan o'chirildi.`);
+      setNotifications([{ id: Date.now(), type: 'alert', title: 'Bekor qilindi', message: `${clientName} ning buyurtmasi o'chirildi.`, time: 'Hozir', read: false }, ...notifications]);
     }
   };
 
-  // YANGI FUNKSIYA: Tizim xotirasini tozalash (Test ma'lumotlarni yo'qotish uchun)
   const handleClearMemory = () => {
-    const isConfirmed = window.confirm("DIQQAT! Tizimdagi barcha ma'lumotlar, parollar va to'ylar butunlay o'chib ketadi. Buni faqat eski test ma'lumotlarni tozalash uchun ishlating. Rozimisiz?");
+    const isConfirmed = window.confirm("DIQQAT! Tizimdagi barcha ma'lumotlar o'chadi. Rozimisiz?");
     if (isConfirmed) {
       localStorage.clear();
-      window.location.reload(); // Sahifani yangilash
+      window.location.reload(); 
     }
   };
 
   const handleSaveBooking = () => {
     if (currentUserRole !== 'manager') return;
     if(!formData.clientName || !formData.eventDate) return; 
+    if(formData.eventTypes.length === 0) {
+      alert("Iltimos, kamida bitta tadbir vaqtini tanlang!");
+      return;
+    }
     
     const newBooking = {
       id: Date.now(),
@@ -190,7 +199,7 @@ export default function ToyxonaCRM() {
       clientName: formData.clientName,
       clientPhone: formData.clientPhone,
       eventCategory: formData.eventCategory,
-      eventType: formData.eventType,
+      eventTypes: formData.eventTypes,
       status: 'Tasdiqlangan',
       orderPrice: formatNumber(formData.orderPrice),
       additionalServices: formatNumber(formData.additionalServices),
@@ -206,16 +215,9 @@ export default function ToyxonaCRM() {
 
     setBookings([...bookings, newBooking].sort((a, b) => new Date(a.date) - new Date(b.date)));
     
-    const newNotif = {
-      id: Date.now(),
-      type: 'success',
-      title: 'Yangi buyurtma saqlandi',
-      message: `${formData.clientName} - ${formData.eventDate} sanasiga tadbir band qildi.`,
-      time: 'Hozir',
-      read: false
-    };
-    setNotifications([newNotif, ...notifications]);
-    sendSystemNotification('Yangi buyurtma saqlandi!', `${formData.clientName} tomonidan ${formData.eventDate} sanasiga tadbir belgilandi.`);
+    setNotifications([{
+      id: Date.now(), type: 'success', title: 'Yangi buyurtma saqlandi', message: `${formData.clientName} - ${formData.eventDate} sanasiga.`, time: 'Hozir', read: false
+    }, ...notifications]);
 
     setFormData(initialFormState);
     setActiveTab('dashboard');
@@ -294,7 +296,7 @@ export default function ToyxonaCRM() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-slate-500 mb-1">Oylik Kutilayotgan Tushum</p>
-                <h3 className="text-2xl font-bold text-slate-800">{formatUZS(totalExpected)}</h3>
+                <h3 className="text-2xl font-bold text-slate-800">{formatDualCurrency(totalExpected)}</h3>
               </div>
               <div className="bg-green-50 p-3 rounded-xl text-green-600"><TrendingUp size={24} /></div>
             </div>
@@ -353,7 +355,11 @@ export default function ToyxonaCRM() {
                         </div>
                         <div>
                           <span className="font-bold text-slate-900 block">{booking.date}</span>
-                          <span className="text-indigo-600 font-medium text-xs bg-indigo-50 px-2 py-0.5 rounded mt-1 inline-block">{booking.eventType} navbat</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(booking.eventTypes || [booking.eventType]).map(t => (
+                              <span key={t} className="text-indigo-600 font-medium text-[10px] bg-indigo-50 px-1.5 py-0.5 rounded">{t}</span>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -377,7 +383,7 @@ export default function ToyxonaCRM() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="block font-bold text-slate-900">{formatUZS(booking.orderPrice)}</span>
+                      <span className="block font-bold text-slate-900">{formatDualCurrency(booking.orderPrice)}</span>
                       <span className="text-slate-500 text-xs">Avans: <span className="font-medium text-slate-700">{formatUZS(booking.advancePayment)}</span></span>
                     </td>
                   </tr>
@@ -440,9 +446,11 @@ export default function ToyxonaCRM() {
                     </span>
                     <div className="space-y-1 flex-1">
                       {dayObj.bookings.map(b => (
-                        <div key={b.id} className={`text-[10px] p-1.5 rounded leading-tight font-medium ${b.eventType === 'Kunduzgi' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-indigo-100 text-indigo-800 border border-indigo-200'}`}>
-                          <span className="block truncate">{b.clientName.split(' ')[0]}</span>
-                          <span className="opacity-75">{b.eventType}</span>
+                        <div key={b.id} className="text-[10px] p-1.5 rounded leading-tight font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 mb-1">
+                          <span className="block truncate font-bold">{b.clientName.split(' ')[0]}</span>
+                          <div className="flex flex-col gap-0.5 mt-0.5 opacity-80">
+                             {(b.eventTypes || [b.eventType]).map(t => <span key={t}>- {t}</span>)}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -474,7 +482,7 @@ export default function ToyxonaCRM() {
           </div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">To'yxona nomi (Brend)</label>
               <input 
@@ -496,8 +504,25 @@ export default function ToyxonaCRM() {
                 className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500" 
               />
             </div>
+
+            {/* YANGI: AQSH Dollari kursi */}
+            <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+              <label className="block text-sm font-bold text-green-800 mb-2 flex items-center gap-1">
+                <DollarSign size={16}/> AQSH Dollari kursi (1 USD)
+              </label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  disabled={currentUserRole !== 'manager'} 
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                  className="w-full p-3 pl-4 pr-12 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-green-900 bg-white" 
+                />
+                <span className="absolute right-4 top-3 text-sm font-bold text-slate-400">UZS</span>
+              </div>
+            </div>
+
           </div>
-          <p className="text-xs text-slate-500">Ushbu o'zgarishlar barcha uchun tizim logotipi va hisobotlarida darhol yangilanadi.</p>
 
           {currentUserRole === 'manager' && (
             <div className="pt-8 border-t border-slate-100 mt-6 animate-in fade-in">
@@ -538,7 +563,6 @@ export default function ToyxonaCRM() {
                 </button>
               </div>
 
-              {/* YANGI QO'SHILGAN BO'LIM: XOTIRANI TOZALASH */}
               <div className="pt-8 border-t border-slate-100 mt-8">
                 <div className="bg-red-50 p-6 rounded-2xl border border-red-200 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
@@ -547,7 +571,7 @@ export default function ToyxonaCRM() {
                     </div>
                     <div>
                       <h4 className="font-bold text-red-900">Tizim xotirasini tozalash (Reset)</h4>
-                      <p className="text-xs text-red-700 mt-1">Barcha test ma'lumotlarni o'chirish va tizimni noldan boshlash uchun ishlating.</p>
+                      <p className="text-xs text-red-700 mt-1">Barcha ma'lumotlarni o'chirish va tizimni noldan boshlash.</p>
                     </div>
                   </div>
                   <button onClick={handleClearMemory} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold shadow-md transition-colors whitespace-nowrap">
@@ -579,7 +603,6 @@ export default function ToyxonaCRM() {
         ) : (
         bookings.map((client, idx) => (
           <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative group">
-             {/* YANGI QO'SHILGAN TUGMA: Buyurtmani bekor qilish */}
              {currentUserRole === 'manager' && (
                <button 
                  onClick={() => handleDeleteBooking(client.id, client.clientName)} 
@@ -602,11 +625,14 @@ export default function ToyxonaCRM() {
              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Sanasi:</span>
-                  <span className="font-medium text-slate-800">{client.date} ({client.eventType})</span>
+                  <span className="font-medium text-slate-800 text-right">
+                    {client.date} <br/> 
+                    <span className="text-[10px] text-indigo-500">{(client.eventTypes || [client.eventType]).join(', ')}</span>
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
                   <span className="text-slate-500">Umumiy xarid:</span>
-                  <span className="font-bold text-indigo-600">{formatUZS(client.orderPrice)}</span>
+                  <span className="font-bold text-indigo-600">{formatDualCurrency(client.orderPrice)}</span>
                 </div>
              </div>
           </div>
@@ -637,19 +663,19 @@ export default function ToyxonaCRM() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
             <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1 relative z-10">Jami Tushumlar</p>
-            <h3 className="text-xl lg:text-2xl font-bold text-green-600 relative z-10">{formatUZS(totalIncomeValue)}</h3>
+            <h3 className="text-lg lg:text-xl font-bold text-green-600 relative z-10">{formatDualCurrency(totalIncomeValue)}</h3>
           </div>
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
             <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1 relative z-10">Tadbirlar Xarajati</p>
-            <h3 className="text-xl lg:text-2xl font-bold text-red-500 relative z-10">- {formatUZS(totalWeddingExpensesValue)}</h3>
+            <h3 className="text-lg lg:text-xl font-bold text-red-500 relative z-10">- {formatDualCurrency(totalWeddingExpensesValue)}</h3>
           </div>
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
             <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1 relative z-10">Maishiy Xarajatlar</p>
-            <h3 className="text-xl lg:text-2xl font-bold text-amber-500 relative z-10">- {formatUZS(totalCompanyExpensesValue)}</h3>
+            <h3 className="text-lg lg:text-xl font-bold text-amber-500 relative z-10">- {formatDualCurrency(totalCompanyExpensesValue)}</h3>
           </div>
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg relative overflow-hidden text-white">
             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 relative z-10">Jami Sof Foyda</p>
-            <h3 className="text-xl lg:text-2xl font-bold text-white relative z-10">{formatUZS(netProfitValue)}</h3>
+            <h3 className="text-lg lg:text-xl font-bold text-white relative z-10">{formatDualCurrency(netProfitValue)}</h3>
           </div>
         </div>
 
@@ -672,7 +698,7 @@ export default function ToyxonaCRM() {
               return (
                 <div key={b.id} className="transition-colors hover:bg-slate-50/30">
                   <div 
-                    className="p-6 flex flex-col md:flex-row md:items-center justify-between cursor-pointer gap-4"
+                    className="p-6 flex flex-col xl:flex-row xl:items-center justify-between cursor-pointer gap-4"
                     onClick={() => setExpandedFinanceId(isExpanded ? null : b.id)}
                   >
                     <div className="flex-1">
@@ -684,16 +710,16 @@ export default function ToyxonaCRM() {
                     <div className="flex items-center gap-6 flex-wrap">
                       <div>
                         <p className="text-xs text-slate-400 uppercase font-bold mb-1">Tushum</p>
-                        <p className="font-bold text-green-600">{formatUZS(bTotalIncome)}</p>
+                        <p className="font-bold text-green-600">{formatDualCurrency(bTotalIncome)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 uppercase font-bold mb-1">Xarajat</p>
-                        <p className="font-bold text-red-500">{formatUZS(b.totalExpenses)}</p>
+                        <p className="font-bold text-red-500">{formatDualCurrency(b.totalExpenses)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 uppercase font-bold mb-1">Foyda</p>
-                        <p className={`font-bold text-lg ${bNetProfit >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>
-                          {formatUZS(bNetProfit)}
+                        <p className={`font-bold ${bNetProfit >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>
+                          {formatDualCurrency(bNetProfit)}
                         </p>
                       </div>
                       <div className="text-slate-400">
@@ -711,19 +737,19 @@ export default function ToyxonaCRM() {
                           </h4>
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-600">Asosiy Narx:</span>
-                            <span className="font-medium text-slate-800">{formatUZS(b.orderPrice)}</span>
+                            <span className="font-medium text-slate-800">{formatDualCurrency(b.orderPrice)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-600">Qo'shimcha Xizmat:</span>
-                            <span className="font-medium text-slate-800">{formatUZS(b.additionalServices || 0)}</span>
+                            <span className="font-medium text-slate-800">{formatDualCurrency(b.additionalServices || 0)}</span>
                           </div>
                           <div className="flex justify-between text-sm pt-2 border-t border-slate-200 border-dashed">
                             <span className="text-slate-600 font-bold">Mijoz to'lagan avans:</span>
-                            <span className="font-bold text-green-600">{formatUZS(b.advancePayment)}</span>
+                            <span className="font-bold text-green-600">{formatDualCurrency(b.advancePayment)}</span>
                           </div>
                           <div className="flex justify-between text-sm bg-amber-50 p-2 rounded-lg border border-amber-100 mt-2">
                             <span className="text-amber-800 font-medium">Qoldiq qarz:</span>
-                            <span className="font-bold text-amber-600">{formatUZS(bTotalIncome - b.advancePayment)}</span>
+                            <span className="font-bold text-amber-600">{formatDualCurrency(bTotalIncome - b.advancePayment)}</span>
                           </div>
                         </div>
 
@@ -732,9 +758,9 @@ export default function ToyxonaCRM() {
                             <Wallet size={16}/> Xarajatlar (Chiqim)
                           </h4>
                           <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">Elektr/Oshpaz/Ishchi/Samovar:</span>
+                            <span className="text-slate-600">Boshqa xizmatlar (Elektr/Oshpaz/...):</span>
                             <span className="font-medium text-slate-800">
-                              {formatUZS((b.expElectricity||0)+(b.expChef||0)+(b.expWorkers||0)+(b.expSamovar||0))}
+                              {formatDualCurrency((b.expElectricity||0)+(b.expChef||0)+(b.expWorkers||0)+(b.expSamovar||0))}
                             </span>
                           </div>
                           {b.otherExpenses && b.otherExpenses.length > 0 && (
@@ -752,7 +778,7 @@ export default function ToyxonaCRM() {
                           )}
                           <div className="flex justify-between text-sm pt-2 border-t border-slate-200 border-dashed">
                             <span className="text-slate-600 font-bold">Jami sarflangan summa:</span>
-                            <span className="font-bold text-red-500">{formatUZS(b.totalExpenses)}</span>
+                            <span className="font-bold text-red-500">{formatDualCurrency(b.totalExpenses)}</span>
                           </div>
                         </div>
                       </div>
@@ -801,7 +827,7 @@ export default function ToyxonaCRM() {
                       <tr>
                         <th className="p-4 border-b">Sana</th>
                         <th className="p-4 border-b">Maqsad</th>
-                        <th className="p-4 border-b text-right">Summa (UZS)</th>
+                        <th className="p-4 border-b text-right">Summa (UZS / USD)</th>
                         <th className="p-4 border-b w-10"></th>
                       </tr>
                    </thead>
@@ -813,7 +839,7 @@ export default function ToyxonaCRM() {
                         <tr key={exp.id}>
                            <td className="p-4 text-slate-500">{exp.date}</td>
                            <td className="p-4 font-medium">{exp.title}</td>
-                           <td className="p-4 font-bold text-red-500 text-right">{formatUZS(exp.amount)}</td>
+                           <td className="p-4 font-bold text-red-500 text-right">{formatDualCurrency(exp.amount)}</td>
                            <td className="p-4 text-right">
                               {currentUserRole === 'manager' && (
                                 <button onClick={() => setCompanyExpenses(companyExpenses.filter(e => e.id !== exp.id))} className="text-red-300 hover:text-red-500">
@@ -833,147 +859,175 @@ export default function ToyxonaCRM() {
     );
   };
 
-  const renderNewOrder = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500 pb-10">
-      <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-20">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setActiveTab('dashboard')} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500"><ArrowLeft size={20} /></button>
-          <div>
-            <h2 className="text-xl font-bold text-slate-800">Yangi Buyurtma Rasmiylashtirish</h2>
+  const renderNewOrder = () => {
+    // YANGI: Tadbir turlarini checkbox orqali tanlash
+    const toggleEventType = (type) => {
+      setFormData(prev => ({
+        ...prev,
+        eventTypes: prev.eventTypes.includes(type) 
+          ? prev.eventTypes.filter(t => t !== type) 
+          : [...prev.eventTypes, type]
+      }));
+    };
+
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500 pb-10">
+        <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-20">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setActiveTab('dashboard')} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500"><ArrowLeft size={20} /></button>
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Yangi Buyurtma Rasmiylashtirish</h2>
+            </div>
+          </div>
+          <button onClick={handleSaveBooking} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2">
+            <Save size={18} /> Saqlash va Tasdiqlash
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+                <User size={20} className="text-indigo-500"/>
+                <h3 className="font-bold text-slate-800">Mijoz va Tadbir</h3>
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Mijoz Ism-sharifi</label>
+                  <input type="text" name="clientName" value={formData.clientName} onChange={handleInputChange} placeholder="Ism (Masalan: Alisher Vahobov)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Telefon raqam</label>
+                  <input type="text" name="clientPhone" value={formData.clientPhone} onChange={handleInputChange} placeholder="+998 90 123 45 67" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Tadbir sanasi</label>
+                  <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required/>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Tadbir toifasi</label>
+                  <select name="eventCategory" value={formData.eventCategory} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                    {eventCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+                
+                {/* YANGI: Ko'p tanlovli tadbir vaqti */}
+                <div className="md:col-span-2 pt-2 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-slate-500 mb-2">Tadbir vaqti (Bir nechtasini tanlashingiz mumkin)</label>
+                  <div className="flex flex-wrap gap-3">
+                    {['Nahorgi osh', 'Kunduzgi tadbir', 'Kechki bazm'].map(type => (
+                      <label key={type} className={`cursor-pointer px-4 py-2 border rounded-xl flex items-center gap-2 text-sm transition-colors select-none
+                        ${formData.eventTypes.includes(type) ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                        <input 
+                          type="checkbox" 
+                          className="hidden" 
+                          checked={formData.eventTypes.includes(type)} 
+                          onChange={() => toggleEventType(type)}
+                        />
+                        {formData.eventTypes.includes(type) && <CheckCircle size={16} className="text-indigo-600"/>}
+                        {type}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="bg-green-50/50 px-6 py-4 border-b border-green-100 flex items-center gap-2">
+                <TrendingUp size={20} className="text-green-600"/>
+                <h3 className="font-bold text-green-800">Tushumlar (Kirim)</h3>
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Kelishilgan Asosiy Narx (UZS)</label>
+                  <input type="text" name="orderPrice" value={formatNumber(formData.orderPrice).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold" />
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium text-right">AQSH dollarida: ${(formatNumber(formData.orderPrice) / Math.max(1, exchangeRate)).toLocaleString('en-US', {maximumFractionDigits: 1})}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Olingan Avans (UZS)</label>
+                  <input type="text" name="advancePayment" value={formatNumber(formData.advancePayment).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold bg-green-50" />
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium text-right">AQSH dollarida: ${(formatNumber(formData.advancePayment) / Math.max(1, exchangeRate)).toLocaleString('en-US', {maximumFractionDigits: 1})}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Qo'shimcha Xizmatlar tushumi (UZS)</label>
+                  <input type="text" name="additionalServices" value={formatNumber(formData.additionalServices).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="bg-red-50/50 px-6 py-4 border-b border-red-100 flex items-center gap-2">
+                <Wallet size={20} className="text-red-500"/>
+                <h3 className="font-bold text-red-800">Xarajatlar (Chiqim)</h3>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Elektr / Chiroq sarfi (UZS)</label>
+                    <input type="text" name="expElectricity" value={formatNumber(formData.expElectricity).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Oshpaz xizmati (UZS)</label>
+                    <input type="text" name="expChef" value={formatNumber(formData.expChef).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Ishchilar va Ofitsiantlar (UZS)</label>
+                    <input type="text" name="expWorkers" value={formatNumber(formData.expWorkers).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Samovar va Choyxona (UZS)</label>
+                    <input type="text" name="expSamovar" value={formatNumber(formData.expSamovar).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
+                  </div>
+                </div>
+                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-sm font-bold text-slate-800">Qo'shimcha Xarajatlar (Dinamik)</h4>
+                    <button onClick={addOtherExpense} className="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <Plus size={14} /> Yangi qo'shish
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {formData.otherExpenses.map((exp) => (
+                      <div key={exp.id} className="flex gap-3 items-center">
+                        <input type="text" placeholder="Nomi (Bezak, San'atkor)" value={exp.name} onChange={(e) => updateOtherExpense(exp.id, 'name', e.target.value)} className="flex-1 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                        <input type="text" placeholder="Summa (UZS)" value={formatNumber(exp.amount).toLocaleString('en-US')} onChange={(e) => updateOtherExpense(exp.id, 'amount', e.target.value)} className="w-40 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-right font-medium text-red-600" />
+                        <button onClick={() => removeOtherExpense(exp.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
+                      </div>
+                    ))}
+                    {formData.otherExpenses.length === 0 && <div className="text-xs text-slate-400 text-center py-2">Qo'shimcha xarajatlar yo'q</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="xl:col-span-1">
+            <div className="bg-slate-900 rounded-3xl shadow-2xl p-8 text-white sticky top-24">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-3 border-b border-slate-700 pb-4">
+                <Calculator size={24} className="text-indigo-400"/> Avtomatik Hisobot
+              </h3>
+              <div className="space-y-6">
+                <div>
+                  <span className="text-slate-400 text-sm mb-1 block">Jami Tushum (Kirim)</span>
+                  <div className="text-xl font-bold text-green-400">{formatDualCurrency(totalIncome)}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-sm mb-1 block">Jami Xarajatlar (Chiqim)</span>
+                  <div className="text-xl font-bold text-red-400">- {formatDualCurrency(totalExpenses)}</div>
+                </div>
+                <div className="pt-6 border-t border-slate-700">
+                  <span className="block text-xs text-indigo-300 uppercase tracking-wider font-bold mb-2">Kutilayotgan Sof Foyda</span>
+                  <div className="text-2xl font-extrabold">{formatDualCurrency(netProfit)}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <button onClick={handleSaveBooking} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2">
-          <Save size={18} /> Saqlash va Tasdiqlash
-        </button>
       </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <User size={20} className="text-indigo-500"/>
-              <h3 className="font-bold text-slate-800">Mijoz va Tadbir</h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Mijoz Ism-sharifi</label>
-                <input type="text" name="clientName" value={formData.clientName} onChange={handleInputChange} placeholder="Ism (Masalan: Alisher Vahobov)" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Telefon raqam</label>
-                <input type="text" name="clientPhone" value={formData.clientPhone} onChange={handleInputChange} placeholder="+998 90 123 45 67" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Tadbir sanasi</label>
-                <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required/>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Tadbir turi</label>
-                <select name="eventCategory" value={formData.eventCategory} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                  {eventCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Vaqti (Navbat)</label>
-                <select name="eventType" value={formData.eventType} onChange={handleInputChange} className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="Kunduzgi">Kunduzgi (Osh)</option>
-                  <option value="Kechki">Kechki</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="bg-green-50/50 px-6 py-4 border-b border-green-100 flex items-center gap-2">
-              <TrendingUp size={20} className="text-green-600"/>
-              <h3 className="font-bold text-green-800">Tushumlar (Kirim)</h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Kelishilgan Asosiy Narx (UZS)</label>
-                <input type="text" name="orderPrice" value={formatNumber(formData.orderPrice).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Olingan Avans (UZS)</label>
-                <input type="text" name="advancePayment" value={formatNumber(formData.advancePayment).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 text-right font-bold bg-green-50" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-500 mb-1">Qo'shimcha Xizmatlar tushumi (UZS)</label>
-                <input type="text" name="additionalServices" value={formatNumber(formData.additionalServices).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 text-right" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="bg-red-50/50 px-6 py-4 border-b border-red-100 flex items-center gap-2">
-              <Wallet size={20} className="text-red-500"/>
-              <h3 className="font-bold text-red-800">Xarajatlar (Chiqim)</h3>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Elektr / Chiroq sarfi (UZS)</label>
-                  <input type="text" name="expElectricity" value={formatNumber(formData.expElectricity).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Oshpaz xizmati (UZS)</label>
-                  <input type="text" name="expChef" value={formatNumber(formData.expChef).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Ishchilar va Ofitsiantlar (UZS)</label>
-                  <input type="text" name="expWorkers" value={formatNumber(formData.expWorkers).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Samovar va Choyxona (UZS)</label>
-                  <input type="text" name="expSamovar" value={formatNumber(formData.expSamovar).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 text-right" />
-                </div>
-              </div>
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-sm font-bold text-slate-800">Qo'shimcha Xarajatlar (Dinamik)</h4>
-                  <button onClick={addOtherExpense} className="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                    <Plus size={14} /> Yangi qo'shish
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {formData.otherExpenses.map((exp) => (
-                    <div key={exp.id} className="flex gap-3 items-center">
-                      <input type="text" placeholder="Nomi (Bezak, San'atkor)" value={exp.name} onChange={(e) => updateOtherExpense(exp.id, 'name', e.target.value)} className="flex-1 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
-                      <input type="text" placeholder="Summa (UZS)" value={formatNumber(exp.amount).toLocaleString('en-US')} onChange={(e) => updateOtherExpense(exp.id, 'amount', e.target.value)} className="w-40 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 text-right font-medium text-red-600" />
-                      <button onClick={() => removeOtherExpense(exp.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
-                    </div>
-                  ))}
-                  {formData.otherExpenses.length === 0 && <div className="text-xs text-slate-400 text-center py-2">Qo'shimcha xarajatlar yo'q</div>}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="xl:col-span-1">
-          <div className="bg-slate-900 rounded-3xl shadow-2xl p-8 text-white sticky top-24">
-            <h3 className="text-xl font-bold mb-6 flex items-center gap-3 border-b border-slate-700 pb-4">
-              <Calculator size={24} className="text-indigo-400"/> Avtomatik Hisobot
-            </h3>
-            <div className="space-y-6">
-              <div>
-                <span className="text-slate-400 text-sm mb-1 block">Jami Tushum (Kirim)</span>
-                <div className="text-2xl font-bold text-green-400">{formatUZS(totalIncome)}</div>
-              </div>
-              <div>
-                <span className="text-slate-400 text-sm mb-1 block">Jami Xarajatlar (Chiqim)</span>
-                <div className="text-2xl font-bold text-red-400">- {formatUZS(totalExpenses)}</div>
-              </div>
-              <div className="pt-6 border-t border-slate-700">
-                <span className="block text-xs text-indigo-300 uppercase tracking-wider font-bold mb-2">Kutilayotgan Sof Foyda</span>
-                <div className="text-4xl font-extrabold">{formatUZS(netProfit)}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (!isAuthenticated) {
     return (
