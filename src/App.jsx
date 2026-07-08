@@ -147,7 +147,6 @@ export default function ToyxonaCRM() {
   const netProfitLiveUZS = totalIncomeUZS - totalExpensesUZS;
   const netProfitLiveUSD = totalIncomeUSD - totalExpensesUSD;
 
-  // FUNKSIYA: Zaxira faylini yuklab olish (Export)
   const handleExportBackup = () => {
     const backupData = {
       bookings,
@@ -165,7 +164,6 @@ export default function ToyxonaCRM() {
     downloadAnchor.remove();
   };
 
-  // FUNKSIYA: Zaxira faylidan ma'lumotlarni tiklash (Import)
   const handleImportBackup = (e) => {
     const fileReader = new FileReader();
     if (!e.target.files[0]) return;
@@ -579,7 +577,6 @@ export default function ToyxonaCRM() {
           </div>
         </div>
         
-        {/* YANGI: Zaxira nusxa yaratish bloki (Backup Section) */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
             <Shield size={20} className="text-indigo-500" /> Ma'lumotlar himoyasi (Zaxira nusxa)
@@ -720,7 +717,6 @@ export default function ToyxonaCRM() {
               <p className="text-sm text-slate-500">Sana: {new Date().toLocaleDateString('uz-UZ')} {new Date().toLocaleTimeString('uz-UZ')}</p>
             </div>
           </div>
-          {/* YANGI: Chop etish tugmasi (Print Button) */}
           <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 print:hidden shadow-sm transition-colors">
             <Printer size={18} /> Hisobotni chop etish
           </button>
@@ -791,7 +787,6 @@ export default function ToyxonaCRM() {
                     </div>
                   </div>
 
-                  {/* Qog'ozga chop etilganda barcha detallar avtomatik ochilib chiqadi (print:block yordamida) */}
                   <div className={`px-6 pb-6 pt-2 bg-slate-50/50 border-t border-slate-100 print:bg-white print:block ${isExpanded ? 'block' : 'hidden print:block'}`}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm print:grid-cols-2 print:gap-4 print:text-xs mt-2">
                       <div className="space-y-2">
@@ -837,7 +832,7 @@ export default function ToyxonaCRM() {
                    <div>
                      <label className="block text-xs font-bold text-slate-500 mb-1">Summa va Valyuta</label>
                      <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-white">
-                       <input type="text" placeholder="0" value={formatNumber(newCompExp.amount).toLocaleString('en-US')} onChange={(e) => setNewCompExp({...newCompExp, amount: e.target.value})} className="flex-1 p-2.5 text-sm outline-none font-bold text-right" />
+                       <input type="text" placeholder="0" value={newCompExp.amount ? formatNumber(newCompExp.amount).toLocaleString('en-US') : ''} onChange={(e) => setNewCompExp({...newCompExp, amount: e.target.value})} className="flex-1 p-2.5 text-sm outline-none font-bold text-right" />
                        <select value={newCompExp.currency} onChange={(e) => setNewCompExp({...newCompExp, currency: e.target.value})} className="bg-slate-100 px-2 text-xs font-bold outline-none">
                          <option value="UZS">UZS</option>
                          <option value="USD">USD ($)</option>
@@ -894,12 +889,25 @@ export default function ToyxonaCRM() {
       }));
     };
 
-    const CurrencyInput = ({ label, name, value, currencyName }) => (
+    // To'g'rilangan (render qismiga qayta biriktirilmaydigan) oson yozuvchi funksiya
+    const renderCurrencyInput = (label, name, value, currencyName) => (
       <div>
         <label className="block text-xs font-bold text-slate-500 mb-1">{label}</label>
         <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-indigo-500 shadow-sm">
-          <input type="text" name={name} value={formatNumber(value).toLocaleString('en-US')} onChange={handleInputChange} placeholder="0" className="flex-1 p-2.5 text-sm outline-none font-bold text-right text-slate-800" />
-          <select name={currencyName} value={formData[currencyName]} onChange={handleInputChange} className="bg-slate-100 px-3 text-xs font-bold border-l border-slate-200 outline-none text-slate-700 cursor-pointer">
+          <input 
+            type="text" 
+            name={name} 
+            value={value ? formatNumber(value).toLocaleString('en-US') : ''} 
+            onChange={handleInputChange} 
+            placeholder="0" 
+            className="flex-1 p-2.5 text-sm outline-none font-bold text-right text-slate-800" 
+          />
+          <select 
+            name={currencyName} 
+            value={formData[currencyName]} 
+            onChange={handleInputChange} 
+            className="bg-slate-100 px-3 text-xs font-bold border-l border-slate-200 outline-none text-slate-700 cursor-pointer"
+          >
             <option value="UZS">UZS</option>
             <option value="USD">USD ($)</option>
           </select>
@@ -961,10 +969,10 @@ export default function ToyxonaCRM() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="bg-green-50/50 px-6 py-4 border-b border-green-100 flex items-center gap-2"><TrendingUp size={20} className="text-green-600"/><h3 className="font-bold text-green-800">Tushumlar (Kirim)</h3></div>
               <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                <CurrencyInput label="Kelishilgan Asosiy Narx" name="orderPrice" value={formData.orderPrice} currencyName="orderPriceCurr" />
-                <CurrencyInput label="Olingan Avans" name="advancePayment" value={formData.advancePayment} currencyName="advancePaymentCurr" />
+                {renderCurrencyInput("Kelishilgan Asosiy Narx", "orderPrice", formData.orderPrice, "orderPriceCurr")}
+                {renderCurrencyInput("Olingan Avans", "advancePayment", formData.advancePayment, "advancePaymentCurr")}
                 <div className="md:col-span-2">
-                  <CurrencyInput label="Qo'shimcha Xizmatlar tushumi" name="additionalServices" value={formData.additionalServices} currencyName="additionalServicesCurr" />
+                  {renderCurrencyInput("Qo'shimcha Xizmatlar tushumi", "additionalServices", formData.additionalServices, "additionalServicesCurr")}
                 </div>
               </div>
             </div>
@@ -973,10 +981,10 @@ export default function ToyxonaCRM() {
               <div className="bg-red-50/50 px-6 py-4 border-b border-red-100 flex items-center gap-2"><Wallet size={20} className="text-red-500"/><h3 className="font-bold text-red-800">Xarajatlar (Chiqim)</h3></div>
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <CurrencyInput label="Elektr / Chiroq sarfi" name="expElectricity" value={formData.expElectricity} currencyName="expElectricityCurr" />
-                  <CurrencyInput label="Oshpaz xizmati" name="expChef" value={formData.expChef} currencyName="expChefCurr" />
-                  <CurrencyInput label="Ishchilar va Ofitsiantlar" name="expWorkers" value={formData.expWorkers} currencyName="expWorkersCurr" />
-                  <CurrencyInput label="Samovar va Choyxona" name="expSamovar" value={formData.expSamovar} currencyName="expSamovarCurr" />
+                  {renderCurrencyInput("Elektr / Chiroq sarfi", "expElectricity", formData.expElectricity, "expElectricityCurr")}
+                  {renderCurrencyInput("Oshpaz xizmati", "expChef", formData.expChef, "expChefCurr")}
+                  {renderCurrencyInput("Ishchilar va Ofitsiantlar", "expWorkers", formData.expWorkers, "expWorkersCurr")}
+                  {renderCurrencyInput("Samovar va Choyxona", "expSamovar", formData.expSamovar, "expSamovarCurr")}
                 </div>
                 
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
@@ -987,9 +995,9 @@ export default function ToyxonaCRM() {
                   <div className="space-y-3">
                     {formData.otherExpenses.map((exp) => (
                       <div key={exp.id} className="flex gap-3 items-center">
-                        <input type="text" placeholder="Nomi (Bezak, San'atkor)" value={exp.name} onChange={(e) => updateOtherExpense(exp.id, 'name', e.target.value)} className="flex-1 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white" />
+                        <input type="text" placeholder="Nomi (Bezak, San'atkor)" value={exp.name} onChange={(e) => updateOtherExpense(exp.id, 'name', e.target.value)} className="flex-1 p-2.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white outline-none" />
                         <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-white w-48">
-                          <input type="text" placeholder="0" value={formatNumber(exp.amount).toLocaleString('en-US')} onChange={(e) => updateOtherExpense(exp.id, 'amount', e.target.value)} className="w-full p-2 text-sm outline-none font-bold text-right text-red-600" />
+                          <input type="text" placeholder="0" value={exp.amount ? formatNumber(exp.amount).toLocaleString('en-US') : ''} onChange={(e) => updateOtherExpense(exp.id, 'amount', e.target.value)} className="w-full p-2 text-sm outline-none font-bold text-right text-red-600" />
                           <select value={exp.currency} onChange={(e) => updateOtherExpense(exp.id, 'currency', e.target.value)} className="bg-slate-100 px-2 text-xs font-bold border-l border-slate-200 outline-none">
                             <option value="UZS">UZS</option>
                             <option value="USD">USD</option>
