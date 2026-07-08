@@ -4,7 +4,7 @@ import {
   Menu, X, TrendingUp, CheckCircle, Clock, ArrowLeft, Save, Plus, Trash2,
   Calculator, User, Phone, ChevronLeft, ChevronRight, 
   Shield, Star, ChevronDown, ChevronUp,
-  LogOut, Lock, UserCircle, Key
+  LogOut, Lock, UserCircle, Key, AlertTriangle
 } from 'lucide-react';
 
 const initialBookings = [];
@@ -148,6 +148,36 @@ export default function ToyxonaCRM() {
       amount: formatNumber(newCompExp.amount) 
     }]);
     setNewCompExp({ title: '', amount: '' });
+  };
+
+  // YANGI FUNKSIYA: Buyurtmani o'chirish
+  const handleDeleteBooking = (id, clientName) => {
+    if (currentUserRole !== 'manager') return;
+    const isConfirmed = window.confirm(`${clientName} ning buyurtmasini rostdan ham bekor qilmoqchimisiz? Ushbu amal moliyaviy hisobotlardan ham o'chib ketishiga olib keladi.`);
+    
+    if (isConfirmed) {
+      setBookings(bookings.filter(b => b.id !== id));
+      
+      const newNotif = {
+        id: Date.now(),
+        type: 'alert',
+        title: 'Buyurtma bekor qilindi',
+        message: `${clientName} ning buyurtmasi tizimdan o'chirildi.`,
+        time: 'Hozir',
+        read: false
+      };
+      setNotifications([newNotif, ...notifications]);
+      sendSystemNotification('Buyurtma bekor qilindi', `${clientName} ning buyurtmasi tizimdan va moliyadan o'chirildi.`);
+    }
+  };
+
+  // YANGI FUNKSIYA: Tizim xotirasini tozalash (Test ma'lumotlarni yo'qotish uchun)
+  const handleClearMemory = () => {
+    const isConfirmed = window.confirm("DIQQAT! Tizimdagi barcha ma'lumotlar, parollar va to'ylar butunlay o'chib ketadi. Buni faqat eski test ma'lumotlarni tozalash uchun ishlating. Rozimisiz?");
+    if (isConfirmed) {
+      localStorage.clear();
+      window.location.reload(); // Sahifani yangilash
+    }
   };
 
   const handleSaveBooking = () => {
@@ -507,6 +537,24 @@ export default function ToyxonaCRM() {
                   <Save size={18}/> Parollarni Saqlash
                 </button>
               </div>
+
+              {/* YANGI QO'SHILGAN BO'LIM: XOTIRANI TOZALASH */}
+              <div className="pt-8 border-t border-slate-100 mt-8">
+                <div className="bg-red-50 p-6 rounded-2xl border border-red-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-red-100 rounded-full text-red-600">
+                      <AlertTriangle size={24}/>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-red-900">Tizim xotirasini tozalash (Reset)</h4>
+                      <p className="text-xs text-red-700 mt-1">Barcha test ma'lumotlarni o'chirish va tizimni noldan boshlash uchun ishlating.</p>
+                    </div>
+                  </div>
+                  <button onClick={handleClearMemory} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold shadow-md transition-colors whitespace-nowrap">
+                    Barchasini O'chirish
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -530,20 +578,31 @@ export default function ToyxonaCRM() {
            <div className="col-span-full p-8 text-center text-slate-500 bg-white rounded-xl">Hozircha mijozlar mavjud emas</div>
         ) : (
         bookings.map((client, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-             <div className="flex items-center gap-4 mb-4">
+          <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative group">
+             {/* YANGI QO'SHILGAN TUGMA: Buyurtmani bekor qilish */}
+             {currentUserRole === 'manager' && (
+               <button 
+                 onClick={() => handleDeleteBooking(client.id, client.clientName)} 
+                 className="absolute top-4 right-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-50 group-hover:opacity-100"
+                 title="Buyurtmani bekor qilish"
+               >
+                 <Trash2 size={20}/>
+               </button>
+             )}
+
+             <div className="flex items-center gap-4 mb-4 pr-10">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
                   {client.clientName.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">{client.clientName}</h3>
+                  <h3 className="font-bold text-slate-800 truncate">{client.clientName}</h3>
                   <p className="text-sm text-slate-500 flex items-center gap-1"><Phone size={12}/> {client.clientPhone}</p>
                 </div>
              </div>
              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Sanasi:</span>
-                  <span className="font-medium text-slate-800">{client.date}</span>
+                  <span className="font-medium text-slate-800">{client.date} ({client.eventType})</span>
                 </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
                   <span className="text-slate-500">Umumiy xarid:</span>
